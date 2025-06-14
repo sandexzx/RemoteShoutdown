@@ -29,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.widget.Toast
 import android.content.Context
+import android.util.Log
 import com.example.remoteshutdown.SSHManager
 
 // Цветовая схема в стиле Apple
@@ -257,6 +258,9 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                     )
                 }
             }
+        } // Закрывающая скобка для Column
+    } // Закрывающая скобка для MainScreen
+    } // А вот тут не хватало закрывающей скобки для MainScreen
 
 @Composable
 fun ActionButton(
