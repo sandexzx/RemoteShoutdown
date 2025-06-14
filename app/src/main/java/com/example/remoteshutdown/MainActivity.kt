@@ -245,7 +245,9 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -253,23 +255,34 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = AppleColors.textPrimary,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
-                    Text(
-                        text = "IP: 192.168.8.101",  // Твой IP
-                        fontSize = 14.sp,
-                        color = AppleColors.textSecondary
-                    )
-                    Text(
-                        text = "Пользователь: zverev",  // Твой username
-                        fontSize = 14.sp,
-                        color = AppleColors.textSecondary
-                    )
+                    
+                    // IP адрес - красиво оформляем как в iOS Settings
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "IP адрес",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AppleColors.textPrimary
+                        )
+                        Text(
+                            text = "192.168.8.101",
+                            fontSize = 15.sp,
+                            color = AppleColors.textSecondary,
+                        )
+                    }
                 }
             }
-        } // Закрывающая скобка для Column
-    } // Закрывающая скобка для MainScreen
-    } // А вот тут не хватало закрывающей скобки для MainScreen
+        }
+    }
+}
 
 @Composable
 fun ActionButton(
