@@ -41,6 +41,26 @@ android {
 
 dependencies {
 
+    // Существующие зависимости...
+
+    // SSH библиотека
+    implementation("com.jcraft:jsch:0.1.55")
+
+    // Для красивого UI
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.compose.ui:ui-graphics:1.5.4")
+
+    // Для анимаций и эффектов
+    implementation("androidx.compose.animation:animation:1.5.4")
+    implementation("androidx.compose.foundation:foundation:1.5.4")
+
+    // Корутины для асинхронности
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
