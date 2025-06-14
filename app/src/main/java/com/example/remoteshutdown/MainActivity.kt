@@ -15,7 +15,10 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +31,11 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.widget.Toast
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import android.content.Context
 import android.util.Log
 import com.example.remoteshutdown.SSHManager
@@ -205,10 +213,11 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                             verticalArrangement = Arrangement.Center
                         ) {
                             // Эмодзи иконка - простой но эффективный способ
-                            Text(
-                                text = "⏻",  // Символ power
-                                fontSize = 48.sp,
-                                color = Color.White
+                            Icon(
+                                imageVector = Icons.Default.PowerSettingsNew,
+                                contentDescription = "Power button",
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.White
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(

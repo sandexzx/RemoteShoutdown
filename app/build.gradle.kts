@@ -42,6 +42,9 @@ android {
 dependencies {
 
     // Существующие зависимости...
+    
+    // Material Icons для гарантированной совместимости
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
     // SSH библиотека
     implementation("com.jcraft:jsch:0.1.55")
