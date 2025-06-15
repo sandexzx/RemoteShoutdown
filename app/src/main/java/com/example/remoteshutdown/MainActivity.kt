@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -39,6 +40,10 @@ import androidx.compose.material3.ButtonDefaults
 import android.content.Context
 import android.util.Log
 import com.example.remoteshutdown.SSHManager
+import com.example.remoteshutdown.UniversalShutdownManager
+import com.example.remoteshutdown.ShutdownResult
+import com.example.remoteshutdown.OSType
+import com.example.remoteshutdown.SystemStatus
 
 // Цветовая схема в стиле Apple
 object AppleColors {
@@ -51,13 +56,12 @@ object AppleColors {
 }
 
 class MainActivity : ComponentActivity() {
-    private val sshManager = SSHManager()
+    private val universalManager = UniversalShutdownManager()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             PCShutdownTheme {
-                // Передаем контекст в MainScreen для Toast
-                MainScreen(this, sshManager)
+                MainScreen(this, universalManager)
             }
         }
     }
@@ -77,22 +81,22 @@ fun PCShutdownTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем context как параметр
+fun MainScreen(context: Context, universalManager: UniversalShutdownManager) {
     // Состояния для анимаций и логики
     var isShuttingDown by remember { mutableStateOf(false) }
     var buttonPressed by remember { mutableStateOf(false) }
+    var selectedOS by remember { mutableStateOf(OSType.AUTO) }
+    var systemStatus by remember { mutableStateOf<SystemStatus?>(null) }
+    var lastResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    // val sshManager = remember { SSHManager() } // Создаем экземпляр SSHManager
     
-    // Функция для выполнения shutdown
-    fun performShutdown() {
-        scope.launch {
-            val success = sshManager.executeShutdown()
-            if (success) {
-                Toast.makeText(context, "Компьютер успешно выключен!", Toast.LENGTH_LONG).show()
-            } else {
-                Toast.makeText(context, "Ошибка при выключении компьютера. Проверьте настройки SSH.", Toast.LENGTH_LONG).show()
-            }
+    // Проверяем статус систем при запуске
+    LaunchedEffect(Unit) {
+        try {
+            systemStatus = universalManager.getSystemStatus()
+            Log.d("MainActivity", "System status: $systemStatus")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to get system status", e)
         }
     }
     
@@ -174,7 +178,7 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
-                            // Логика нажатия кнопки
+                            // Логика нажатия кнопки с новым менеджером
                             if (!isShuttingDown) {
                                 buttonPressed = true
                                 scope.launch {
@@ -182,17 +186,23 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                                     buttonPressed = false
                                     isShuttingDown = true
                                     
-                                    // Выполняем shutdown через SSH
-                                    val success = sshManager.executeShutdown()
+                                    // Выполняем shutdown через универсальный менеджер
+                                    val result = universalManager.executeShutdown(selectedOS)
                                     
-                                    // Логируем результат для отладки
-                                    if (success) {
-                                        Log.d("MainActivity", "Shutdown команда отправлена успешно")
-                                    } else {
-                                        Log.e("MainActivity", "Ошибка при отправке shutdown команды")
+                                    when (result) {
+                                        is ShutdownResult.Success -> {
+                                            Log.d("MainActivity", "Shutdown успешно: ${result.message}")
+                                            lastResult = "${result.osType.emoji} ${result.message}"
+                                            Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                                        }
+                                        is ShutdownResult.Error -> {
+                                            Log.e("MainActivity", "Shutdown ошибка: ${result.message}")
+                                            lastResult = "❌ ${result.message}"
+                                            Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                                        }
                                     }
                                     
-                                    delay(3000)  // Время для выполнения команды
+                                    delay(3000)  // Время для просмотра результата
                                     isShuttingDown = false
                                 }
                             }
@@ -233,7 +243,91 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
             
             Spacer(modifier = Modifier.height(40.dp))
             
-            // Статус соединения - показываем IP адрес
+            // Селектор ОС - выбираем какую систему выключать
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = AppleColors.cardWhite
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        text = "🎯 Выбор операционной системы",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AppleColors.textPrimary,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    // Радиокнопки для выбора ОС
+                    OSType.values().forEach { osType ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedOS = osType }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Простая радиокнопка
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .background(
+                                        color = if (selectedOS == osType) AppleColors.primaryBlue else AppleColors.textSecondary.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(50)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selectedOS == osType) {
+                                    Text(
+                                        text = "✓",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Text(
+                                text = "${osType.emoji} ${osType.displayName}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AppleColors.textPrimary
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // Индикатор доступности
+                            systemStatus?.let { status ->
+                                val isAvailable = when (osType) {
+                                    OSType.UBUNTU -> status.ubuntuAvailable
+                                    OSType.WINDOWS -> status.windowsAvailable
+                                    OSType.AUTO -> status.hasAnySystem
+                                }
+                                
+                                Text(
+                                    text = if (isAvailable) "🟢" else "🔴",
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Статус соединения - показываем детали подключения
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -258,7 +352,7 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    // IP адрес - красиво оформляем как в iOS Settings
+                    // IP адрес
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -278,32 +372,73 @@ fun MainScreen(context: Context, sshManager: SSHManager) { // Добавляем
                             color = AppleColors.textSecondary,
                         )
                     }
+                    
+                    // Статус систем
+                    systemStatus?.let { status ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "🐧 Ubuntu SSH",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AppleColors.textPrimary
+                            )
+                            Text(
+                                text = if (status.ubuntuAvailable) "Доступен" else "Недоступен",
+                                fontSize = 15.sp,
+                                color = if (status.ubuntuAvailable) Color(0xFF34C759) else AppleColors.destructiveRed,
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "🪟 Windows API",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AppleColors.textPrimary
+                            )
+                            Text(
+                                text = if (status.windowsAvailable) "Доступен" else "Недоступен",
+                                fontSize = 15.sp,
+                                color = if (status.windowsAvailable) Color(0xFF34C759) else AppleColors.destructiveRed,
+                            )
+                        }
+                    }
+                    
+                    // Последний результат операции
+                    lastResult?.let { result ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = AppleColors.backgroundGray
+                            )
+                        ) {
+                            Text(
+                                text = result,
+                                fontSize = 13.sp,
+                                color = AppleColors.textSecondary,
+                                modifier = Modifier.padding(12.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ActionButton(
-    text: String,
-    backgroundColor: Color,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.95f else 1f)
-
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-            .scale(scale),
-        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(12.dp),
-        interactionSource = interactionSource
-    ) {
-        Text(text, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     }
 }

@@ -74,4 +74,29 @@ class SSHManager {
             }
         }
     }
+
+    /**
+     * Проверяет доступность SSH соединения без выполнения команд.
+     */
+    suspend fun checkConnection(): Boolean {
+        return withContext(Dispatchers.IO) {
+            var session: Session? = null
+            try {
+                Log.d(TAG, "Проверяем SSH соединение к $HOST:$PORT")
+                val jsch = JSch()
+                session = jsch.getSession(USERNAME, HOST, PORT)
+                session.setPassword(PASSWORD)
+                session.setConfig("StrictHostKeyChecking", "no")
+                session.connect(5000) // Таймаут 5 секунд на подключение
+                Log.d(TAG, "SSH соединение успешно установлено.")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка проверки SSH соединения: ${e.message}")
+                return@withContext false
+            } finally {
+                session?.disconnect()
+                Log.d(TAG, "SSH сессия проверки закрыта.")
+            }
+        }
+    }
 }
